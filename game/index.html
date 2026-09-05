@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>L'Aventure de OUMAIMA</title>
+<meta name="description" content="Un petit jeu en 7 niveaux — chaque niveau réussi débloque une lettre du prénom OUMAIMA.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='78' x='12' font-size='80'%3E%E2%9D%A4%EF%B8%8F%3C/text%3E%3C/svg%3E">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg1:#1a0510;
+    --bg2:#3a0d24;
+    --pink:#ff5d8f;
+    --pink-soft:#ffb3c6;
+    --gold:#ffd166;
+    --card-bg:rgba(255,255,255,0.06);
+    --text:#fff0f5;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    min-height:100vh;
+    font-family:'Poppins',sans-serif;
+    background:linear-gradient(160deg,var(--bg1),var(--bg2) 60%,#200814);
+    color:var(--text);
+    overflow-x:hidden;
+  }
+
+  #bgHearts{ position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:0; }
+  .ambient-heart{ position:absolute; bottom:-40px; opacity:.3; animation-name:floatUp; animation-timing-function:linear; }
+  @keyframes floatUp{ to{ transform:translateY(-110vh) rotate(20deg); opacity:0; } }
+  .burst-heart{ position:fixed; font-size:1.8rem; animation-name:burst; animation-timing-function:ease-out; animation-fill-mode:forwards; pointer-events:none; z-index:50; }
+  @keyframes burst{ to{ transform:translate(var(--dx),var(--dy)) scale(.4); opacity:0; } }
+
+  .wrap{ position:relative; z-index:1; max-width:720px; margin:0 auto; padding:24px 16px 50px; min-height:100vh; display:flex; flex-direction:column; }
+
+  .topbar{ display:flex; flex-direction:column; align-items:center; gap:14px; margin-bottom:26px; }
+  .brand{ font-size:1.05rem; font-weight:600; letter-spacing:.4px; display:flex; gap:8px; align-items:center; text-align:center; }
+  .letters{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+  .letterbox{
+    width:36px; height:42px; border-radius:10px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Pacifico',cursive; font-size:1.25rem;
+    background:rgba(255,255,255,0.06);
+    border:2px solid rgba(255,255,255,0.15);
+    color:rgba(255,255,255,0.35);
+    transition:.4s;
+  }
+  .letterbox.unlocked{
+    background:linear-gradient(135deg,var(--pink),var(--gold));
+    color:#2b0b17; border-color:transparent;
+    transform:scale(1.1);
+    box-shadow:0 6px 18px rgba(255,93,143,.45);
+  }
+
+  .stage{ flex:1; display:flex; align-items:center; justify-content:center; }
+  .screen{ width:100%; }
+  .card{
+    background:var(--card-bg);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:22px;
+    padding:30px 24px;
+    text-align:center;
+    backdrop-filter:blur(6px);
+    animation:pop .35s ease;
+  }
+  @keyframes pop{ from{ transform:scale(.92); opacity:0; } to{ transform:scale(1); opacity:1; } }
+
+  .title{ font-size:1.6rem; margin:0 0 14px; line-height:1.3; }
+  .cursive{ font-family:'Pacifico',cursive; color:var(--pink); }
+  .card p{ line-height:1.55; opacity:.88; }
+
+  .btn{
+    margin-top:20px; padding:14px 30px; border:none; border-radius:100px;
+    background:linear-gradient(135deg,var(--pink),#ff8fb0);
+    color:#2b0b17; font-weight:700; font-size:1rem; cursor:pointer;
+    box-shadow:0 8px 20px rgba(255,93,143,.35);
+    transition:transform .15s;
+  }
+  .btn:active{ transform:scale(.96); }
+  .btn.ghost{ background:transparent; border:2px solid var(--pink-soft); color:var(--pink-soft); box-shadow:none; }
+
+  .level-tag{ font-size:.78rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--gold); margin-bottom:8px; }
+
+  .game-card{ padding:20px 16px; }
+  .game-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; padding:0 4px; font-size:.9rem; }
+  .game-info{ display:flex; gap:16px; margin-left:auto; }
+  .game-info b{ color:var(--gold); }
+
+  /* --- heart catch --- */
+  .catch-area{
+    position:relative; height:320px; border-radius:16px; overflow:hidden;
+    background:radial-gradient(circle at 50% 0%, rgba(255,255,255,.08), transparent 70%);
+    touch-action:none;
+  }
+  .falling{
+    position:absolute; top:-40px; font-size:2rem; user-select:none; cursor:pointer;
+    animation-name:fall; animation-timing-function:linear; animation-fill-mode:forwards;
+  }
+  @keyframes fall{ to{ top:100%; } }
+  .pop-good{ transform:scale(1.8) !important; opacity:0 !important; transition:.15s; }
+  .pop-bad{ transform:scale(.2) rotate(30deg) !important; opacity:0 !important; transition:.15s; }
+
+  /* --- memory --- */
+  .memory-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; max-width:420px; margin:0 auto; }
+  .mcard{
+    aspect-ratio:1; border-radius:12px; border:none;
+    background:linear-gradient(135deg,#3a0d24,#5a1633);
+    cursor:pointer; font-size:1.6rem; color:#fff; position:relative;
+  }
+  .mcard-inner{ display:flex; align-items:center; justify-content:center; width:100%; height:100%; }
+  .mcard-front{ display:none; }
+  .mcard.flipped .mcard-front, .mcard.matched .mcard-front{ display:flex; }
+  .mcard.flipped .mcard-back, .mcard.matched .mcard-back{ display:none; }
+  .mcard.matched{ opacity:.5; }
+
+  /* --- simon --- */
+  .simon-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; max-width:280px; margin:0 auto; }
+  .simon-pad{ aspect-ratio:1; border-radius:16px; border:none; cursor:pointer; opacity:.75; transition:.15s; }
+  .simon-pad.pad-red{ background:#ff4d5e; }
+  .simon-pad.pad-blue{ background:#4d7dff; }
+  .simon-pad.pad-green{ background:#3ddc84; }
+  .simon-pad.pad-yellow{ background:#ffd166; }
+  .simon-pad.active{ opacity:1; transform:scale(.94); box-shadow:0 0 30px rgba(255,255,255,.6); }
+
+  /* --- puzzle --- */
+  .puzzle-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; max-width:270px; margin:0 auto; }
+  .ptile{
+    aspect-ratio:1; border-radius:10px; border:none;
+    background:linear-gradient(135deg,var(--pink),#ff8fb0);
+    color:#2b0b17; font-size:1.6rem; font-weight:700; cursor:pointer;
+  }
+  .ptile.pempty{ background:transparent; box-shadow:none; cursor:default; }
+
+  /* --- quiz --- */
+  .quiz-box{ text-align:left; }
+  .quiz-q{ font-size:1.1rem; margin-bottom:16px; text-align:center; }
+  .quiz-opts{ display:grid; gap:10px; }
+  .quiz-opt{
+    padding:12px 16px; border-radius:12px; border:1px solid rgba(255,255,255,.2);
+    background:rgba(255,255,255,.05); color:var(--text); cursor:pointer; font-size:1rem; text-align:left;
+  }
+  .quiz-opt.correct{ background:rgba(61,220,132,.25); border-color:#3ddc84; }
+  .quiz-opt.wrong{ background:rgba(255,77,94,.2); border-color:#ff4d5e; }
+
+  /* --- typing --- */
+  .typing-phrase{ font-family:'Pacifico',cursive; font-size:1.4rem; color:var(--gold); margin-bottom:18px; letter-spacing:1px; text-align:center; }
+  .typing-input{
+    width:100%; box-sizing:border-box; padding:14px; border-radius:12px;
+    border:2px solid rgba(255,255,255,.2); background:rgba(255,255,255,.05);
+    color:var(--text); font-size:1.1rem; text-align:center;
+  }
+
+  /* --- win / final --- */
+  .unlocked-letter{ font-family:'Pacifico',cursive; font-size:4rem; color:var(--gold); text-shadow:0 0 30px rgba(255,209,102,.6); }
+  .final-card{ padding:44px 24px; }
+  .final-name{ font-family:'Pacifico',cursive; font-size:3rem; color:var(--pink); text-shadow:0 0 30px rgba(255,93,143,.6); }
+  .final-msg{ font-size:1.35rem; margin-top:12px; font-weight:700; letter-spacing:.5px; }
+  .final-from{ margin-top:20px; opacity:.8; font-style:italic; }
+
+  .foot{ text-align:center; margin-top:22px; }
+  .link-btn{ background:none; border:none; color:rgba(255,255,255,.35); font-size:.75rem; cursor:pointer; text-decoration:underline; }
+
+  @media (max-width:420px){
+    .unlocked-letter{ font-size:3.2rem; }
+    .final-name{ font-size:2.3rem; }
+  }
+</style>
+</head>
+<body>
+
+<div id="bgHearts"></div>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">💖 L'Aventure de OUMAIMA</div>
+    <div class="letters" id="lettersTrack"></div>
+  </header>
+
+  <main class="stage" id="stage"></main>
+
+  <footer class="foot">
+    <button class="link-btn" id="resetBtn">recommencer l'aventure depuis le début</button>
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var NAME = ["O","U","M","A","I","M","A"];
+  var STORAGE_KEY = "oumaima_quest_progress_v1";
+
+  function loadProgress(){
+    try{
+      var p = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      if(p && typeof p.unlocked === "number") return p;
+    }catch(e){}
+    return { unlocked: 0 };
+  }
+  function saveProgress(p){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); }catch(e){}
+  }
+
+  var progress = loadProgress();
+  var cleanupFn = null;
+  var stage = document.getElementById("stage");
+  var bgHearts = document.getElementById("bgHearts");
+
+  function mount(html){
+    if(cleanupFn){ cleanupFn(); cleanupFn = null; }
+    stage.innerHTML = "";
+    var div = document.createElement("div");
+    div.className = "screen";
+    div.innerHTML = html;
+    stage.appendChild(div);
+    return div;
+  }
+
+  function renderLetters(){
+    var track = document.getElementById("lettersTrack");
+    track.innerHTML = NAME.map(function(l, i){
+      var unlocked = i < progress.unlocked;
+      return '<span class="letterbox' + (unlocked ? ' unlocked' : '') + '">' + (unlocked ? l : "?") + '</span>';
+    }).join("");
+  }
+
+  function burstHearts(count){
+    count = count || 20;
+    for(var i=0;i<count;i++){
+      (function(){
+        var el = document.createElement("span");
+        el.className = "burst-heart";
+        var glyphs = ["❤️","💖","💗","✨","💫"];
+        el.textContent = glyphs[Math.floor(Math.random()*glyphs.length)];
+        el.style.left = (42 + Math.random()*16) + "%";
+        el.style.top = "45%";
+        var dx = (Math.random()-0.5)*420;
+        var dy = -(200 + Math.random()*320);
+        el.style.setProperty("--dx", dx + "px");
+        el.style.setProperty("--dy", dy + "px");
+        el.style.animationDuration = (0.9 + Math.random()*0.9) + "s";
+        bgHearts.appendChild(el);
+        el.addEventListener("animationend", function(){ el.remove(); });
+      })();
+    }
+  }
+
+  function spawnAmbient(){
+    var el = document.createElement("span");
+    el.className = "ambient-heart";
+    var glyphs = ["❤️","💖","💕"];
+    el.textContent = glyphs[Math.floor(Math.random()*glyphs.length)];
+    el.style.left = (Math.random()*100) + "%";
+    el.style.fontSize = (1 + Math.random()*1.4) + "rem";
+    el.style.animationDuration = (7 + Math.random()*7) + "s";
+    bgHearts.appendChild(el);
+    el.addEventListener("animationend", function(){ el.remove(); });
+  }
+  setInterval(spawnAmbient, 900);
+
+  /* ---------------- Level 1 & 7 : Heart Catch ---------------- */
+  function heartCatchLevel(opts){
+    return function(container, info, done){
+      container.classList.add("catch-area");
+      var score = 0, timeLeft = opts.duration, finished = false;
+      info.innerHTML = '<span>❤️ <b id="scoreVal">0</b>/' + opts.target + '</span><span>⏱ <b id="timeVal">' + timeLeft + '</b>s</span>';
+      var scoreEl = info.querySelector("#scoreVal");
+      var timeEl = info.querySelector("#timeVal");
+
+      var spawnInterval = setInterval(function(){
+        if(finished) return;
+        var isBomb = Math.random() < opts.bombChance;
+        var el = document.createElement("div");
+        el.className = "falling " + (isBomb ? "bomb" : "heart");
+        el.textContent = isBomb ? "💣" : "❤️";
+        el.style.left = (Math.random()*85) + "%";
+        var dur = opts.speedMin + Math.random()*(opts.speedMax - opts.speedMin);
+        el.style.animationDuration = dur + "s";
+        el.addEventListener("animationend", function(){ el.remove(); });
+        el.addEventListener("pointerdown", function(e){
+          e.stopPropagation();
+          if(finished) return;
+          if(isBomb){ score = Math.max(0, score - 2); el.classList.add("pop-bad"); }
+          else { score++; el.classList.add("pop-good"); }
+          scoreEl.textContent = score;
+          setTimeout(function(){ el.remove(); }, 150);
+        });
+        container.appendChild(el);
+      }, opts.spawnMs);
+
+      var timerInterval = setInterval(function(){
+        timeLeft--;
+        timeEl.textContent = timeLeft;
+        if(timeLeft <= 0){
+          finished = true;
+          clearInterval(spawnInterval);
+          clearInterval(timerInterval);
+          done(score >= opts.target);
+        }
+      }, 1000);
+
+      return function(){ clearInterval(spawnInterval); clearInterval(timerInterval); };
+    };
+  }
+
+  /* ---------------- Level 2 : Memory ---------------- */
+  function memoryLevel(container, info, done){
+    var emojis = ["💖","💘","💝","💞","💓","💗"];
+    var cards = emojis.concat(emojis);
+    for(var i = cards.length - 1; i > 0; i--){
+      var j = Math.floor(Math.random()*(i+1));
+      var tmp = cards[i]; cards[i] = cards[j]; cards[j] = tmp;
+    }
+    container.classList.add("memory-grid");
+    var first = null, lock = false, matched = 0, moves = 0;
+    info.innerHTML = '<span>Paires: <b id="mVal">0</b>/6</span><span>Coups: <b id="movesVal">0</b></span>';
+    var mVal = info.querySelector("#mVal");
+    var movesVal = info.querySelector("#movesVal");
+
+    cards.forEach(function(emoji){
+      var c = document.createElement("button");
+      c.className = "mcard";
+      c.dataset.emoji = emoji;
+      c.innerHTML = '<span class="mcard-inner"><span class="mcard-back">✨</span><span class="mcard-front">' + emoji + '</span></span>';
+      c.addEventListener("click", function(){
+        if(lock || c.classList.contains("flipped") || c.classList.contains("matched")) return;
+        c.classList.add("flipped");
+        if(!first){ first = c; return; }
+        moves++; movesVal.textContent = moves;
+        if(first.dataset.emoji === c.dataset.emoji){
+          first.classList.add("matched");
+          c.classList.add("matched");
+          matched++; mVal.textContent = matched;
+          first = null;
+          if(matched === 6){ setTimeout(function(){ done(true); }, 500); }
+        } else {
+          lock = true;
+          var f = first;
+          setTimeout(function(){
+            f.classList.remove("flipped");
+            c.classList.remove("flipped");
+            first = null;
+            lock = false;
+          }, 700);
+        }
+      });
+      container.appendChild(c);
+    });
+    return function(){};
+  }
+
+  /* ---------------- Level 3 : Simon ---------------- */
+  function simonLevel(container, info, done){
+    var colors = ["red","blue","green","yellow"];
+    var TARGET_LEN = 6;
+    var sequence = [], userIdx = 0, accepting = false;
+    var timeouts = [];
+    info.innerHTML = '<span>Séquence: <b id="seqVal">0</b>/' + TARGET_LEN + '</span>';
+    var seqVal = info.querySelector("#seqVal");
+    container.classList.add("simon-grid");
+    var pads = {};
+
+    colors.forEach(function(c){
+      var p = document.createElement("button");
+      p.className = "simon-pad pad-" + c;
+      p.dataset.color = c;
+      container.appendChild(p);
+      pads[c] = p;
+      p.addEventListener("pointerdown", function(){
+        if(!accepting) return;
+        flash(p);
+        if(sequence[userIdx] === c){
+          userIdx++;
+          if(userIdx === sequence.length){
+            if(sequence.length >= TARGET_LEN){
+              accepting = false;
+              setTimeout(function(){ done(true); }, 400);
+              return;
+            }
+            accepting = false;
+            setTimeout(nextRound, 700);
+          }
+        } else {
+          accepting = false;
+          sequence = []; userIdx = 0; seqVal.textContent = 0;
+          setTimeout(nextRound, 700);
+        }
+      });
+    });
+
+    function flash(p){ p.classList.add("active"); setTimeout(function(){ p.classList.remove("active"); }, 200); }
+
+    function nextRound(){
+      sequence.push(colors[Math.floor(Math.random()*4)]);
+      seqVal.textContent = sequence.length;
+      userIdx = 0;
+      playSequence();
+    }
+
+    function playSequence(){
+      accepting = false;
+      sequence.forEach(function(c, i){
+        var t = setTimeout(function(){ flash(pads[c]); }, 500*(i+1));
+        timeouts.push(t);
+      });
+      var t2 = setTimeout(function(){ accepting = true; }, 500*(sequence.length+1));
+      timeouts.push(t2);
+    }
+
+    nextRound();
+    return function(){ timeouts.forEach(clearTimeout); };
+  }
+
+  /* ---------------- Level 4 : Puzzle taquin ---------------- */
+  function puzzleLevel(container, info, done){
+    var size = 3;
+    var tiles = [1,2,3,4,5,6,7,8,0];
+    var blankIdx = 8;
+
+    function idxToRC(idx){ return [Math.floor(idx/size), idx%size]; }
+    function canMove(idx){
+      var a = idxToRC(idx), b = idxToRC(blankIdx);
+      return (Math.abs(a[0]-b[0]) + Math.abs(a[1]-b[1])) === 1;
+    }
+    function neighbors(){
+      var res = [];
+      for(var i=0;i<9;i++){ if(canMove(i)) res.push(i); }
+      return res;
+    }
+
+    for(var n=0;n<120;n++){
+      var opts = neighbors();
+      var pick = opts[Math.floor(Math.random()*opts.length)];
+      var tmp = tiles[blankIdx]; tiles[blankIdx] = tiles[pick]; tiles[pick] = tmp;
+      blankIdx = pick;
+    }
+
+    container.classList.add("puzzle-grid");
+    info.innerHTML = '<span>Reconstitue l’ordre 1 → 8 ✨</span>';
+
+    function render(){
+      container.innerHTML = "";
+      tiles.forEach(function(val, idx){
+        var t = document.createElement("button");
+        t.className = "ptile" + (val === 0 ? " pempty" : "");
+        t.textContent = val === 0 ? "" : val;
+        t.addEventListener("click", function(){
+          if(canMove(idx)){
+            var tmp2 = tiles[blankIdx]; tiles[blankIdx] = tiles[idx]; tiles[idx] = tmp2;
+            blankIdx = idx;
+            render();
+            checkWin();
+          }
+        });
+        container.appendChild(t);
+      });
+    }
+
+    function checkWin(){
+      var solved = tiles.every(function(v, i){ return i === 8 ? v === 0 : v === i+1; });
+      if(solved){ setTimeout(function(){ done(true); }, 300); }
+    }
+
+    render();
+    return function(){};
+  }
+
+  /* ---------------- Level 5 : Quiz ---------------- */
+  function quizLevel(container, info, done){
+    var questions = [
+      { q: "Quel est le symbole universel de l'amour ?", opts: ["⭐","❤️","🔺","☁️"], a: 1 },
+      { q: "En moyenne, à combien de battements par minute bat un cœur au repos ?", opts: ["10","70","300","1000"], a: 1 },
+      { q: "Quelle fleur symbolise traditionnellement l'amour passionné ?", opts: ["Tournesol","Cactus","Rose rouge","Bambou"], a: 2 },
+      { q: "Combien de lettres compte le prénom OUMAIMA ?", opts: ["5","6","7","8"], a: 2 },
+      { q: "Quelle couleur symbolise la passion amoureuse ?", opts: ["Bleu","Vert","Gris","Rouge"], a: 3 }
+    ];
+    var idx = 0, correct = 0;
+    container.classList.add("quiz-box");
+    info.innerHTML = '<span>Question <b id="qNum">1</b>/' + questions.length + '</span><span>Score: <b id="qScore">0</b></span>';
+    var qNum = info.querySelector("#qNum");
+    var qScore = info.querySelector("#qScore");
+
+    function renderQ(){
+      var item = questions[idx];
+      container.innerHTML = '<p class="quiz-q">' + item.q + '</p><div class="quiz-opts">' +
+        item.opts.map(function(o, i){ return '<button class="quiz-opt" data-i="' + i + '">' + o + '</button>'; }).join("") +
+        '</div>';
+      container.querySelectorAll(".quiz-opt").forEach(function(btn){
+        btn.addEventListener("click", function(){
+          var chosen = parseInt(btn.dataset.i, 10);
+          container.querySelectorAll(".quiz-opt").forEach(function(b){ b.disabled = true; });
+          if(chosen === item.a){
+            btn.classList.add("correct");
+            correct++; qScore.textContent = correct;
+          } else {
+            btn.classList.add("wrong");
+            container.querySelector('[data-i="' + item.a + '"]').classList.add("correct");
+          }
+          setTimeout(function(){
+            idx++;
+            if(idx < questions.length){ qNum.textContent = idx+1; renderQ(); }
+            else { done(correct >= 4); }
+          }, 900);
+        });
+      });
+    }
+
+    renderQ();
+    return function(){};
+  }
+
+  /* ---------------- Level 6 : Typing ---------------- */
+  function typingLevel(container, info, done){
+    var phrases = ["OUMAIMA TU ES MA FORCE","AYOUB AIME OUMAIMA","NOUS DEUX POUR TOUJOURS"];
+    var phrase = phrases[Math.floor(Math.random()*phrases.length)];
+    var timeLeft = 20, finished = false;
+
+    container.classList.add("typing-box");
+    container.innerHTML = '<div class="typing-phrase">' + phrase + '</div>' +
+      '<input type="text" id="typeInput" class="typing-input" autocomplete="off" autocapitalize="characters" placeholder="Tape la phrase ici...">';
+    info.innerHTML = '<span>⏱ <b id="tTime">' + timeLeft + '</b>s</span>';
+    var tTime = info.querySelector("#tTime");
+    var input = container.querySelector("#typeInput");
+    setTimeout(function(){ input.focus(); }, 50);
+
+    input.addEventListener("input", function(){
+      if(finished) return;
+      if(input.value.trim().toUpperCase() === phrase){
+        finished = true;
+        clearInterval(timer);
+        done(true);
+      }
+    });
+
+    var timer = setInterval(function(){
+      timeLeft--;
+      tTime.textContent = timeLeft;
+      if(timeLeft <= 0 && !finished){
+        finished = true;
+        clearInterval(timer);
+        done(false);
+      }
+    }, 1000);
+
+    return function(){ clearInterval(timer); };
+  }
+
+  /* ---------------- Levels config ---------------- */
+  var LEVELS = [
+    {
+      name: "Niveau 1 — Chasse aux Cœurs",
+      instructions: "Attrape au moins 12 cœurs ❤️ avant la fin du temps. Évite les bombes 💣 !",
+      mount: heartCatchLevel({ duration:25, target:12, spawnMs:550, bombChance:0.18, speedMin:2.2, speedMax:3.6 })
+    },
+    {
+      name: "Niveau 2 — Memory de l'Amour",
+      instructions: "Retrouve les 6 paires de cœurs identiques en retournant les cartes.",
+      mount: memoryLevel
+    },
+    {
+      name: "Niveau 3 — Simon Dit",
+      instructions: "Mémorise la séquence de couleurs et reproduis-la. Elle s'allonge à chaque tour, jusqu'à 6 !",
+      mount: simonLevel
+    },
+    {
+      name: "Niveau 4 — Puzzle Taquin",
+      instructions: "Glisse les tuiles pour remettre les chiffres dans l'ordre, de 1 à 8.",
+      mount: puzzleLevel
+    },
+    {
+      name: "Niveau 5 — Quiz de l'Amour",
+      instructions: "Réponds correctement à au moins 4 questions sur 5.",
+      mount: quizLevel
+    },
+    {
+      name: "Niveau 6 — Tape Vite",
+      instructions: "Recopie la phrase affichée le plus vite et le plus précisément possible.",
+      mount: typingLevel
+    },
+    {
+      name: "Niveau 7 — Le Grand Défi",
+      instructions: "Le défi final ! Attrape 16 cœurs en 22 secondes, les bombes sont plus nombreuses...",
+      mount: heartCatchLevel({ duration:22, target:16, spawnMs:380, bombChance:0.28, speedMin:1.6, speedMax:2.6 })
+    }
+  ];
+
+  /* ---------------- Screens / flow ---------------- */
+  function showIntro(){
+    renderLetters();
+    var hasProgress = progress.unlocked > 0;
+    mount(
+      '<div class="card intro-card">' +
+      '<h1 class="title">L’Aventure de <span class="cursive">OUMAIMA</span></h1>' +
+      '<p>7 petits défis t’attendent... Chaque défi réussi débloque une lettre de ton prénom. À la fin, une surprise t’attend 💌</p>' +
+      '<button class="btn" id="startBtn">' + (hasProgress ? "Continuer l’aventure" : "Commencer l’aventure") + '</button>' +
+      '</div>'
+    );
+    document.getElementById("startBtn").onclick = function(){ showLevelIntro(progress.unlocked); };
+  }
+
+  function showLevelIntro(i){
+    renderLetters();
+    var lvl = LEVELS[i];
+    mount(
+      '<div class="card level-intro">' +
+      '<div class="level-tag">Niveau ' + (i+1) + ' / 7</div>' +
+      '<h2>' + lvl.name + '</h2>' +
+      '<p>' + lvl.instructions + '</p>' +
+      '<button class="btn" id="playBtn">Jouer</button>' +
+      '</div>'
+    );
+    document.getElementById("playBtn").onclick = function(){ playLevel(i); };
+  }
+
+  function playLevel(i){
+    var lvl = LEVELS[i];
+    var container = mount(
+      '<div class="card game-card">' +
+      '<div class="game-head"><div class="level-tag">Niveau ' + (i+1) + '/7</div><div class="game-info" id="gameInfo"></div></div>' +
+      '<div id="gameArea" class="game-area"></div>' +
+      '</div>'
+    );
+    var gameArea = container.querySelector("#gameArea");
+    var info = container.querySelector("#gameInfo");
+    var cleanup = lvl.mount(gameArea, info, function(won){
+      if(cleanupFn){ cleanupFn(); cleanupFn = null; }
+      if(won){ onLevelWin(i); } else { showFail(i); }
+    });
+    cleanupFn = cleanup || null;
+  }
+
+  function showFail(i){
+    mount(
+      '<div class="card fail-card">' +
+      '<h2>Presque ! 💪</h2>' +
+      '<p>Retente ce défi, tu vas y arriver 😘</p>' +
+      '<button class="btn" id="retryBtn">Réessayer</button>' +
+      '</div>'
+    );
+    document.getElementById("retryBtn").onclick = function(){ showLevelIntro(i); };
+  }
+
+  function onLevelWin(i){
+    progress.unlocked = Math.max(progress.unlocked, i+1);
+    saveProgress(progress);
+    renderLetters();
+    burstHearts(24);
+    var letter = NAME[i];
+    var remaining = 7 - (i+1);
+    mount(
+      '<div class="card win-card">' +
+      '<div class="unlocked-letter">' + letter + '</div>' +
+      '<h2>Lettre débloquée !</h2>' +
+      '<p>Tu as réussi le niveau ' + (i+1) + '. ' + (remaining > 0 ? ("Encore " + remaining + " défi" + (remaining > 1 ? "s" : "") + " avant la surprise finale...") : "C'est le moment de découvrir ta surprise !") + '</p>' +
+      '<button class="btn" id="nextBtn">' + (i+1 < 7 ? "Niveau suivant" : "Voir la surprise") + '</button>' +
+      '</div>'
+    );
+    document.getElementById("nextBtn").onclick = function(){
+      if(i+1 < 7) showLevelIntro(i+1); else showFinal();
+    };
+  }
+
+  function showFinal(){
+    renderLetters();
+    burstHearts(50);
+    mount(
+      '<div class="card final-card">' +
+      '<div class="final-name">OUMAIMA</div>' +
+      '<div class="final-msg">I LOVE YOU MUCH</div>' +
+      '<div class="final-from">FROM AYOUB WITH LOVE</div>' +
+      '<button class="btn ghost" id="replayBtn">Rejouer l’aventure</button>' +
+      '</div>'
+    );
+    document.getElementById("replayBtn").onclick = function(){
+      progress = { unlocked: 0 };
+      saveProgress(progress);
+      showIntro();
+    };
+  }
+
+  document.getElementById("resetBtn").addEventListener("click", function(){
+    if(confirm("Recommencer l’aventure depuis le début ?")){
+      progress = { unlocked: 0 };
+      saveProgress(progress);
+      showIntro();
+    }
+  });
+
+  renderLetters();
+  if(progress.unlocked >= 7){
+    showFinal();
+  } else {
+    showIntro();
+  }
+})();
+</script>
+</body>
+</html>
